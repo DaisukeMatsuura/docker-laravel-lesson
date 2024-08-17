@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TODO管理</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 20px;
+      }
+      .todo-list {
+        margin: 20px 0;
+      }
+      .todo-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      .completed {
+        text-decoration: line-through;
+      }
+      button {
+        margin-left: 5px;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 5px;
+        max-width: 400px;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TODO管理</h1>
+
+    <button id="addTodoBtn">TODOを追加</button>
+
+    <div class="todo-list" id="todoList"></div>
+
+    <!-- モーダル -->
+    <div class="modal" id="modal">
+      <div class="modal-content">
+        <h2>新しいTODO</h2>
+        <label for="title">タイトル:</label>
+        <input type="text" id="todoTitle" />
+        <br /><br />
+        <button id="saveTodoBtn">保存</button>
+        <button id="closeModalBtn">閉じる</button>
+      </div>
+    </div>
+
+    <script>
+      const apiUrl = "http://localhost:8080/api/todos";
+      const todoList = document.getElementById("todoList");
+      const modal = document.getElementById("modal");
+      const addTodoBtn = document.getElementById("addTodoBtn");
+      const closeModalBtn = document.getElementById("closeModalBtn");
+      const saveTodoBtn = document.getElementById("saveTodoBtn");
+      const todoTitle = document.getElementById("todoTitle");
+
+      // TODO一覧取得
+      async function fetchTodos() {
+        const response = await fetch(apiUrl);
+        const todos = await response.json();
+        renderTodos(todos);
+      }
+
+      // TODO一覧表示
+      function renderTodos(todos) {
+        todoList.innerHTML = "";
+        todos.forEach((todo) => {
+          const todoItem = document.createElement("div");
+          todoItem.className = "todo-item";
+
+          const title = document.createElement("span");
+          title.textContent = todo.title;
+          if (todo.completed) {
+            title.className = "completed";
+          }
+
+          const buttons = document.createElement("div");
+
+          // 完了ボタン
+          const completeBtn = document.createElement("button");
+          completeBtn.textContent = todo.completed
+            ? "未完了にする"
+            : "完了にする";
+          completeBtn.onclick = () =>
+            toggleComplete(todo.id, todo.title, todo.completed);
+          buttons.appendChild(completeBtn);
+
+          // 削除ボタン
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "削除";
+          deleteBtn.onclick = () => deleteTodo(todo.id);
+          buttons.appendChild(deleteBtn);
+
+          todoItem.appendChild(title);
+          todoItem.appendChild(buttons);
+          todoList.appendChild(todoItem);
+        });
+      }
+
+      // TODO追加モーダル表示
+      addTodoBtn.addEventListener("click", () => {
+        modal.style.display = "flex";
+      });
+
+      // モーダルを閉じる
+      closeModalBtn.addEventListener("click", () => {
+        modal.style.display = "none";
+        todoTitle.value = "";
+      });
+
+      // TODO作成
+      saveTodoBtn.addEventListener("click", async () => {
+        const title = todoTitle.value;
+        if (!title) return;
+
+        const newTodo = {
+          title: title,
+          completed: false,
+        };
+
+        await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newTodo),
+        });
+
+        modal.style.display = "none";
+        todoTitle.value = "";
+        fetchTodos();
+      });
+
+      // TODO完了切り替え
+      async function toggleComplete(id, title, completed) {
+        await fetch(`${apiUrl}/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title,
+            completed: !completed,
+          }),
+        });
+        fetchTodos();
+      }
+
+      // TODO削除
+      async function deleteTodo(id) {
+        await fetch(`${apiUrl}/${id}`, {
+          method: "DELETE",
+        });
+        fetchTodos();
+      }
+
+      // 初期表示
+      fetchTodos();
+    </script>
+  </body>
+</html>
